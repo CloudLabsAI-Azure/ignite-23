@@ -1,6 +1,8 @@
 
 ## Exercise 5: Power BI reports with Direct Lake
 
+So, we saw that Contoso was able to have all their organizational data in OneLake in Microsoft Fabric while still continuing to invest in Azure Databricks from their past architecture. You may be asking, what are the benefits? The benefit’s are tremendous! Contoso can leverage the persona-based experiences in Microsoft Fabric for their various personas. They can choose their type of workloads and computes to run on top of this data and they could easily scale to add even more sources of data in the future. On top of that, they could benefit from the governance features of Microsoft Purview and OneSecurity across their entire data estate.They could leverage Power BI for compelling visualizations including near real-time data for making data driven decisions. Besides, with the new Direct Lake query mode in Power BI, they no longer had to choose between data latency or performance; they could get both! Now as Business Analyst let's see how we can leverage the Power BI experience in Microsoft Fabric!
+
 ### Task 5.1: Leverage Power BI to derive actionable insights from data in Lakehouse using Direct Lake mode.
 
 In this task, you will work with Power BI to reveal some valuable insights.
@@ -70,14 +72,19 @@ Now, let's go Website Analytics.
 
    ![Task 6](media/task-6.1.18.png)
 
-Here we see an immediate problem for Contoso. The bounce rate is high. It looks like a large population of their customers/visitors leave their website without much activity.
+Here we see an immediate problem for Contoso. The bounce rate is high. It looks like a large population of their customers/visitors leave their website without much activity. The Power BI report reveals to Contoso that in fact a large population of the unhappy customers who contribute to the high bounce rate on their website are Millennials. In addition, it specifically helps Contoso identify the reason why these millennials are unhappy. It is evident that when they use their mobile devices to search for their favorite products such as beach accessories, their product searches are failing!
 
    ![Task 6](media/task-6.1.19.png)
 
-As a result of this analysis, Contoso reduced their bounce rate by implementing a mobile-friendly website with fast product searches, focusing on high demand products for millenials. These changes not only improve the bounce rate dramatically, but they also reward Contoso with uprecedented sales at their sales event.
+As a result of this analysis, Contoso reduced their bounce rate by implementing a mobile-friendly website with fast product searches, focusing on high demand products for millennials. These changes not only improve the bounce rate dramatically, but they also reward Contoso with unprecedented sales at their sales event.
 
+**OPTIONAL Exercise**
 
-## Exercise 6: Real-time Analytics experience, explore Streaming data using KQL DB for a near real-time analytics scenario (Optional)
+## Exercise 6: Real-time Analytics experience, explore Streaming data using KQL DB for a near real-time analytics scenario
+
+In a short span of few months the CDO and his team implemented transformations using Microsoft Fabric and Azure Databricks.
+
+Imagine it is 6 am on the day of the black Friday sale during Thanksgiving week for Contoso. Customers are entering stores in large numbers. Specifically, we will see how near real-time data is used to make decisions for the next moment at Contoso's stores to ensure optimal temperatures are maintained for their customers while they shop!
 
 ### Task 6.1: Create a KQL Database
 
@@ -231,69 +238,33 @@ Query Thermostat Data in Near Real-time using KQL Script
 
 ```BASH
 //What is the average temperature every 1 min?
-thermostat
-| where EnqueuedTimeUTC >= ago(30d)
-| where DeviceId == 'TH005'
-| summarize avg(Temp) by bin(EnqueuedTimeUTC,1m)
-| render timechart 
-
-thermostat
-| where EnqueuedTimeUTC < ago(1h)
-| where DeviceId == 'TH020'
-| summarize avg(Temp) by bin(EnqueuedTimeUTC,1m)
-| render timechart 
-
-.create-or-alter function myFunction(binsize:timespan)
-{
-thermostat
-| where EnqueuedTimeUTC > ago(10d)
-| where DeviceId == 'TH005'
-| summarize avg(Temp) by bin(EnqueuedTimeUTC,binsize)
-| render timechart 
-}
-
-myFunction(50m)
+thermostat | where EnqueuedTimeUTC >= ago(1d) | where DeviceId == 'TH005' | summarize avg(Temp) by bin(EnqueuedTimeUTC,1m) | render timechart 
 
 //What will be the temperature for next 15 Minutes?
-thermostat
-| where EnqueuedTimeUTC > ago(40d)
-| make-series AvgTemp=avg(Temp) default=real(null) on EnqueuedTimeUTC from ago(400d) to now()+15m step 1m  
-| extend NoGapsTemp=series_fill_linear(AvgTemp)
-| project EnqueuedTimeUTC, NoGapsTemp
-| extend forecast = series_decompose_forecast(NoGapsTemp, 15)
-| render timechart with(title='Forecasting the next 15min by Time Series Decmposition')
+thermostat | where EnqueuedTimeUTC > ago(1d) | make-series AvgTemp=avg(Temp) default=real(null) on EnqueuedTimeUTC from ago(1d) to now()+15m step 1m  | extend NoGapsTemp=series_fill_linear(AvgTemp) | project EnqueuedTimeUTC, NoGapsTemp | extend forecast = series_decompose_forecast(NoGapsTemp, 15) | render timechart with(title='Forecasting the next 15min by Time Series Decmposition')
 
 //Are there any anomalies for this device?
-thermostat 
-| where EnqueuedTimeUTC > ago(12h)
-| where DeviceId == 'TH005'
-| make-series AvgTemp=avg(Temp) default=real(null) on EnqueuedTimeUTC from ago(20d) to now() step 1m 
-| extend NoGapsTemp=series_fill_linear(AvgTemp)
-| project EnqueuedTimeUTC, NoGapsTemp
-| extend anomalies = series_decompose_anomalies(NoGapsTemp,1) 
-| render anomalychart with(anomalycolumns=anomalies)
+thermostat | where EnqueuedTimeUTC > ago(1h) | where DeviceId == 'TH005'| make-series AvgTemp=avg(Temp) default=real(null) on EnqueuedTimeUTC from ago(1d) to now() step 1m | extend NoGapsTemp=series_fill_linear(AvgTemp) | project EnqueuedTimeUTC, NoGapsTemp | extend anomalies = series_decompose_anomalies(NoGapsTemp,1) | render anomalychart with(anomalycolumns=anomalies)
 
 ```
 
-7. Select the query. **(Line 2-6)**
+7. Select the query. **(Line 2)**
 
 8.	Click **Run**.
 
 The graph/result visualizes the data in a line chart. We see that it looks like the temperature is currently quite pleasant.
 
-`Note: The query from line **26 - 42** has the heavy data, avoid running the query. Those are only for information.`
+9. Select the query. **(Line 5)**
 
-`Note: The user might not see graph, due to query of high data.`
+10. Click Run.
 
-9. Select the query. **(Line 26-32)**
+The graph/result visualizes the average temperature in the next 15 minutes, in anticipation of heavy foot traffic due to the ongoing sale.
 
-The graph/result visualizes the average temperature in the next 15 minutes, in anticipation of heavy foot traffic due to the ongoing sale. We notice that the temperature is going to remain pleasant for a while.
+11. Select the query. **(Line 8)**
 
-11. Select the query. **(Line 35-42)**
+12. Click Run.
 
-The third query is executed to keep an eye on the temperature and detect any anomalies. 
-A sudden rise or drop in temperature triggers an alert for the Contoso staff to check the situation and take necessary action to bring the temperature back to an optimal level.
-
+The third query is executed to keep an eye on the temperature and detect any anomalies. A sudden rise or drop in temperature triggers an alert for the Contoso staff to check the situation and take necessary action to bring the temperature back to an optimal level.
 
 ### Task 6.4: Create a Real-time Power BI report using KQL DB/KQL Query
 
@@ -336,62 +307,3 @@ A sudden rise or drop in temperature triggers an alert for the Contoso staff to 
 10. Hover over the **Average Temperature** to see the real-time data in Power BI.
 
 	![Close the browser.](media/task-5.4.6.png)
-
-
-#### Appendix
-
-*Create reports based on the datasets created from the lakehouse.*
-
-1. In the workspace, click on **Filter** and select **Lakehouse**.
-
-    ![Task 6](media/task-6.1.1.png)
-
-2. Click on **lakehouseSilver**.
-
-    ![Task 6](media/task-6.1.2.png)
-
-3. Click on **New Power BI dataset** or **New Semantic Model**.
-
-    ![Task 6](media/task-6.1.3.png)
-
-4. Select the required tables per the requirement and click on the **Confirm** button.
-
-   ![Task 6](media/task-6.1.4.png)
-
-5. Create the data model per the requirement.
-
-    ![Task 6](media/task-6.1.5.png)
-
-6. Click on **New report** to create the Power BI report.
-
-    ![Task 6](media/task-6.1.6.png)
-
-7. You would see the page shown in the screenshot.
-
-    ![Task 6](media/task-6.1.7.png)
-
-8. Select **Visuals and Columns** to create the report.
-
-    ![Task 6](media/task-6.1.8.png)
-
-9. Build a report per your requirements. Below, you can see a sample report.
-
-    ![Task 6](media/task-6.1.9.png)
-
-Congratulations! You as Data Engineers have helped Contoso gain actionable insights from its disparate data sources, thereby contributing to future growth, customer satisfaction, and a competitive advantage.
-
-In this lab we experienced the creation of a simple integrated, open and governed Data Lakehouse foundation using Modern Analytics with Microsoft Fabric and Azure Databricks. 
-
-In this lab we covered the following:
-
-First, we explored the Data Engineering experience and learned how to create a Microsoft Fabric enabled workspace, build a Lakehouse, and injest data into OneLake. 
-
-Second, we to explored an analytics pipeline using open Delta format and Azure Databricks Delta Live Tables. We stitched streaming and non-streaming data (landed earlier), to create a combined data product to build a simple Lakehouse and integrate with OneLake.
-
-Third, we explored ML and BI scenarios on the Lakehouse. Here we reviewed MLOps pipeline using the Azure Databricks managed MLflow with Azure ML.  
-
-Fourth, we explored SQL Analytics in the Data Warehouse experience where we created a Data Warehouse, loaded dat into the warehouse, and then created a virtual Data Warehouse.
-
-Fifth, we explored Streaming data using KQL DB for a Real-time Analytics experience. Here, we created a KQL Database, injested real-time and historical data into KQL DB, analyzed patterns to uncover anomalies and outliers, and created a Real-time Power BI report using KQL DB and KQL Query. 
-
-Finally, we leveraged Power BI to derive actionable insights from data in the Lakehouse using Direct Lake mode.
